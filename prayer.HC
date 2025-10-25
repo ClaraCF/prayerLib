@@ -1,5 +1,7 @@
 #include "./idiaot.HC"
 
+#define BUFFER_SIZE 2048
+
 // REQUEST(route, payload?);
 
 // Returns the host part of the address host[:port] in addr
@@ -43,8 +45,22 @@ public Response GET(U8 *route, U8 *data)
 
     // First we stablish a connection with the target route
     // public I32 NetConnect(U8 *addr, I32 port, Bool non_blocking=FALSE);
-    I32 conn = NetConnect(route, port);
+    I32 sockfd = NetConnect(addr, port);
+
+    // Construct a GET request
+    U8 body[BUFFER_SIZE];
+    StrPrint(body, "GET / HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", route);
+
+    // Send the GET request
+    write(sockfd, body, StrLen(body));
 
     // Now we try to read something :sob:
+    U8 buffer[BUFFER_SIZE];
+    I32 bytes_read = read(sockfd, buffer, BUFFER_SIZE-1);
+
+    "Address: %s\nPort: %d\n", addr, port;
+    "sockfd: %d\n", sockfd;
+    "Bytes read: %d\n", bytes_read;
+    "Buffer: %s\n", buffer;
 }
 
