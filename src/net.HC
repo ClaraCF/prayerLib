@@ -1,26 +1,95 @@
-// Returns the host part of the address host[:port] in addr
-public U8 *GetHost(U8 *addr)
+class URL
 {
-    I64 separatorLocation = FindChar(addr, ':');
+    U8 *protocol;
+    U8 *host;
+    I32 port;
+    U8 *route;
+};
 
-    if (separatorLocation == -1)
-        return addr;
+// Returns the protocol part of the url protocol://host[:port]/route
+// If no protocol:// is present in the URL, returns http.
+public U8 *GetProtocol(U8 *url)
+{
+    I64 protocolSeparatorLocation = FindSubStr(url, "://");
 
-    return GetSubStr(addr, 0, separatorLocation);
+    if (protocolSeparatorLocation == -1)
+        return "http";
+
+    return GetSubStr(url, 0, protocolSeparatorLocation);
 }
 
-// Returns the port part of the address host[:port] in addr
-// If no [:port] is specified, default port of 80 is returned
-public I32 GetPort(U8 *addr)
+// Returns the host part of the url protocol://host[:port]/route
+public U8 *GetHost(U8 *url)
 {
-    I64 separatorLocation = FindChar(addr, ':');
+    // Remove protocol from url
+    I64 protocolSeparatorLocation = FindSubStr(url, "://");
+    if (protocolSeparatorLocation != -1)
+        url = GetSubStr(url, protocolSeparatorLocation, StrLen(url) - 3);
+
+    // Remove route from url
+    I64 routeSeparatorLocation = FindChar(url, '/');
+    if (routeSeparatorLocation != -1)
+        url = GetSubStr(url, 0, routeSeparatorLocation);
+
+    I64 separatorLocation = FindChar(url, ':');
+
+    if (separatorLocation == -1)
+        return url;
+
+    return GetSubStr(url, 0, separatorLocation);
+}
+
+// Returns the port part of the url protocol://host[:port]/route
+// If no [:port] is specified, default port of 80 is returned
+public I32 GetPort(U8 *url)
+{
+    // Remove protocol from url
+    I64 protocolSeparatorLocation = FindSubStr(url, "://");
+    if (protocolSeparatorLocation != -1)
+        url = GetSubStr(url, protocolSeparatorLocation, StrLen(url) - 3);
+
+    // Remove route from url
+    I64 routeSeparatorLocation = FindChar(url, '/');
+    if (routeSeparatorLocation != -1)
+        url = GetSubStr(url, 0, routeSeparatorLocation);
+
+    I64 separatorLocation = FindChar(url, ':');
 
     if (separatorLocation == -1)
         return 80;
 
     I64 offset = separatorLocation + 1;
-    I64 length = StrLen(addr) - offset;
+    I64 length = StrLen(url) - offset;
 
-    return AToI32(GetSubStr(addr, offset, length));
+    return AToI32(GetSubStr(url, offset, length));
+}
+
+// Returns the route part of the url protocol://host[:port]/route
+// If no route is present, returns default / route
+public U8 *GetRoute(U8 *url)
+{
+    // Remove protocol from url
+    I64 protocolSeparatorLocation = FindSubStr(url, "://");
+    if (protocolSeparatorLocation != -1)
+        url = GetSubStr(url, protocolSeparatorLocation, StrLen(url) - 3);
+
+    I64 routeLocation = FindChar(url, '/');
+    
+    if (routeLocation == -1)
+        return "/";
+
+    return GetSubStr(url, routeLocation, StrLen(url)-routeLocation);
+}
+
+// Creates a new stack-allocated URL object from url
+public URL UrlNew(U8 *url)
+{
+    URL url;
+    url.protocol = GetProtocol(url);
+    url.host = GetHost(url);
+    url.port = GetPort(url);
+    url.route = GetRoute(url);
+
+    return url;
 }
 
