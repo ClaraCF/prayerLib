@@ -81,15 +81,15 @@ public U8 *GetRoute(U8 *url)
     return GetSubStr(url, routeLocation, StrLen(url)-routeLocation);
 }
 
-// Creates a new stack-allocated URL object from url
-public URL UrlNew(U8 *url)
+// Creates a new heap-allocated URL object from url
+public URL *UrlNew(U8 *url)
 {
-    URL url;
-    url.protocol = GetProtocol(url);
-    url.host = GetHost(url);
-    url.port = GetPort(url);
-    url.route = GetRoute(url);
+    URL *urlobj = MAlloc(sizeof(URL))(URL *);
+    urlobj->protocol = GetProtocol(url);
+    urlobj->host = GetHost(url);
+    urlobj->port = GetPort(url);
+    urlobj->route = GetRoute(url);
 
-    return url;
+    return urlobj;
 }
 
