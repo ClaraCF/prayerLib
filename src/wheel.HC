@@ -9,6 +9,7 @@
    - Clara
 */
 
+
 // Finds first instance of chr and returns its position in src
 // Returns -1 if its not found
 public I64 FindChar(U8 *src, U8 chr)
@@ -31,6 +32,23 @@ public U8 *GetSubStr(U8 *src, I64 off, I64 len)
         return StrNew("");
 
     return StrNCpy(src+off, len);
+}
+
+// Finds first instance of substr and returns its position in src
+// Returns -1 if its not found
+public I64 FindSubStr(U8 *src, U8 *substr)
+{
+    I64 srcLen = StrLen(src);
+    I64 substrLen = StrLen(substr);
+
+    for (I64 i = 0; i < srcLen-substrLen; i++)
+    {
+        U8 *search = GetSubStr(src, i, substrLen);
+        if (!StrCmp(search, substr))
+            return i;
+    }
+
+    return -1;
 }
 
 // Returns 1 if the given chr is a digit, 0 otherwise
