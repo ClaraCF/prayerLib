@@ -1,3 +1,14 @@
+/* Inside this file are various functions for utility.
+ * This includes String manipulation, types conversion, etc.
+ * Reason why I made my own implementation is because for some
+   God-forsaken reason, many of the String manipulation functions
+   built-in into the language do not work. They crash.
+ * I don't know if this is due to the compiler being sus or skill
+   issue of mine, but alas: I've reinvented the wheel inside this file.
+
+   - Clara
+*/
+
 // Finds first instance of chr and returns its position in src
 // Returns -1 if its not found
 public I64 FindChar(U8 *src, U8 chr)

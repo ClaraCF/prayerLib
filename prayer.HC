@@ -1,43 +1,7 @@
-#include "./idiaot.HC"
+#include "./src/wheel.HC"
+#include "./src/net.HC"
 
 #define BUFFER_SIZE 256
-
-U0 Debug1(){}
-U0 Debug2(){}
-U0 Debug3(){}
-U0 Debug4(){}
-U0 Debug5(){}
-U0 Debug6(){}
-U0 Debug7(){}
-U0 Debug8(){}
-U0 Debug9(){}
-U0 Debug10(){}
-
-// Returns the host part of the address host[:port] in addr
-private U8 *GetHost(U8 *addr)
-{
-    I64 separatorLocation = FindChar(addr, ':');
-
-    if (separatorLocation == -1)
-        return addr;
-
-    return GetSubStr(addr, 0, separatorLocation);
-}
-
-// Returns the port part of the address host[:port] in addr
-// If no [:port] is specified, default port of 80 is returned
-private I32 GetPort(U8 *addr)
-{
-    I64 separatorLocation = FindChar(addr, ':');
-
-    if (separatorLocation == -1)
-        return 80;
-
-    I64 offset = separatorLocation + 1;
-    I64 length = StrLen(addr) - offset;
-
-    return AToI32(GetSubStr(addr, offset, length));
-}
 
 public class Request
 {
