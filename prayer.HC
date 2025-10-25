@@ -35,11 +35,15 @@ public U0 RequestAddHeader(Request *request, U8 *key, U8 *value)
 
 public Request *RequestNew(U8 *requestType, U8 *url)
 {
-    U8 *addr = GetHost(url);
+    // TODO: Handle protocols other than http
+    //U8 *protocol = GetProtocol(url);
+
+    U8 *host = GetHost(url);
     I32 port = GetPort(url);
+    U8 *route = GetRoute(url);
 
     // Stablish a connection with the target host
-    I32 sockfd = NetConnect(addr, port);
+    I32 sockfd = NetConnect(host, port);
 
     // Create a request object
     Request *request = MAlloc(sizeof(Request))(Request *);
@@ -49,9 +53,9 @@ public Request *RequestNew(U8 *requestType, U8 *url)
     request->body = JsonParse("{}");
 
     // Construct the request
-    U8 *startLine = StrPrint(NULL, "%s / HTTP/1.1", requestType);
-    RequestAddLine(request, startLine);
-    RequestAddHeader(request, "Host", request->url);
+    U8 *requestLine = StrPrint(NULL, "%s %s HTTP/1.1", requestType, route);
+    RequestAddLine(request, requestLine);
+    RequestAddHeader(request, "Host", host);
     RequestAddHeader(request, "Connection", "close");
 
     return request;
@@ -69,6 +73,7 @@ private U8 *RequestReadBuffer(Request *request)
         bytesRead = read(request->sockfd, buffer, BUFFER_SIZE-1);
         buffer[bytesRead+1] = 0;
         response = StrMerge(response, buffer);
+        "%s", response;
     }
 
     return response;
