@@ -2,8 +2,6 @@
 
 #define BUFFER_SIZE 2048
 
-// REQUEST(route, payload?);
-
 // Returns the host part of the address host[:port] in addr
 private U8 *GetHost(U8 *addr)
 {
@@ -58,6 +56,7 @@ public U0 RequestAddLine(Request *request, U8 *line)
     StrPrint(header, "%s\r\n", line);
 
     PtrVecPush(request->headers, header);
+    Free(header);
 }
 
 public U0 RequestAddHeader(Request *request, U8 *key, U8 *value)
@@ -66,11 +65,10 @@ public U0 RequestAddHeader(Request *request, U8 *key, U8 *value)
     StrPrint(header, "%s: %s", key, value);
 
     RequestAddLine(request, header);
-
     Free(header);
 }
 
-public Request CreateRequest(U8 *requestType, U8 *url)
+public Request *CreateRequest(U8 *requestType, U8 *url)
 {
     U8 *addr = GetHost(url);
     I32 port = GetPort(url);
@@ -79,56 +77,57 @@ public Request CreateRequest(U8 *requestType, U8 *url)
     I32 sockfd = NetConnect(addr, port);
 
     // Create a request object
-    Request request;// = MAlloc(sizeof(Request));  // TODO: Clean this memory
-    request.sockfd = sockfd;
-    request.url = url;
-    request.headers = PtrVecNew(0); // TODO: Clean this memory
-    request.auth = "";
-    request.body = JsonParse("{}");
+    Request *request = MAlloc(sizeof(Request));
+    request->sockfd = sockfd;
+    request->url = url;
+    request->headers = PtrVecNew(0);
+    request->auth = "";
+    request->body = JsonParse("{}");
 
     // Construct the request
     U8 *startLine = StrPrint(NULL, "%s / HTTP/1.1", requestType);
-    RequestAddLine(&request, startLine);
-    RequestAddHeader(&request, "Host", request.url);
-    RequestAddHeader(&request, "Authorization", request.auth);
-    RequestAddHeader(&request, "Connection", "close");
+    RequestAddLine(request, startLine);
+    RequestAddHeader(request, "Host", request->url);
+    RequestAddHeader(request, "Authorization", request->auth);
+    RequestAddHeader(request, "Connection", "close");
 
     return request;
 }
 
-public Response GET(U8 *url, U8 *data)
+public U0 GET(U8 *url, U8 *data = "{}")
 {
-    Request request = CreateRequest("GET", url);
-    request.body = JsonParse(data);
+    Request *request = CreateRequest("GET", url);
+    request->body = JsonParse(data);
 
-    if (!JsonIsNull(request.body) && JsonOk(request.body))
+    if (!JsonIsNull(request->body) && JsonOk(request->body))
     {
-        U8 *body = JsonToString(request.body);
+        U8 *body = JsonToString(request->body);
         U8 *len;
         I64ToStr(len, StrLen(body));
 
-        RequestAddHeader(&request, "Content-Type", "application/json");
-        RequestAddHeader(&request, "Content-Length", len);
-        RequestAddLine(&request, "");
-        RequestAddLine(&request, body);
+        RequestAddHeader(request, "Content-Type", "application/json");
+        RequestAddHeader(request, "Content-Length", len);
+        RequestAddLine(request, "");
+        RequestAddLine(request, body);
     }
 
     // Send the GET request
-    for (I64 i = 0; i < PtrVecCapacity(request.headers); i++)
+    for (I64 i = 0; i < PtrVecCapacity(request->headers); i++)
     {
-        U8 *line = PtrVecGet(&request, i);
-        write(request.sockfd, line, StrLen(line));
+        U8 *line = PtrVecGet(request, i);
+        write(request->sockfd, line, StrLen(line));
     }
-
-    PtrVecRelease(&request);
-    PtrVecClear(&request);
 
     // Now we try to read something :sob:
     U8 buffer[BUFFER_SIZE];
-    I32 bytes_read = read(request.sockfd, buffer, BUFFER_SIZE-1);
+    I32 bytes_read = read(request->sockfd, buffer, BUFFER_SIZE-1);
 
     "URL: %s\n", url;
     "Bytes read: %d\n", bytes_read;
     "Buffer:\n%s\n", buffer;
+
+    PtrVecRelease(request);
+    PtrVecClear(request);
+    Free(request);
 }
 
