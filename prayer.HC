@@ -1,6 +1,17 @@
 #include "./idiaot.HC"
 
-#define BUFFER_SIZE 2048
+#define BUFFER_SIZE 256
+
+U0 Debug1(){}
+U0 Debug2(){}
+U0 Debug3(){}
+U0 Debug4(){}
+U0 Debug5(){}
+U0 Debug6(){}
+U0 Debug7(){}
+U0 Debug8(){}
+U0 Debug9(){}
+U0 Debug10(){}
 
 // Returns the host part of the address host[:port] in addr
 private U8 *GetHost(U8 *addr)
@@ -28,47 +39,37 @@ private I32 GetPort(U8 *addr)
     return AToI32(GetSubStr(addr, offset, length));
 }
 
-public class Header
-{
-    U8 *key;
-    U8 *value;
-};
-
 public class Request
 {
     I32 sockfd;
     U8 *url;
     PtrVec *headers;
-    U8 *auth;
     Json *body;
 };
 
 public class Response
 {
+    U8 *raw;
     I32 statusCode;
-    U8 *headers;
+    PtrVec *headers;
     U8 *content;
 };
 
 public U0 RequestAddLine(Request *request, U8 *line)
 {
-    U8 *header = MAlloc(sizeof(U8) * (StrLen(line) + 3));
-    StrPrint(header, "%s\r\n", line);
-
+    U8 *header = StrPrint(NULL, "%s\r\n", line);
     PtrVecPush(request->headers, header);
-    Free(header);
+    //Free(header);
 }
 
 public U0 RequestAddHeader(Request *request, U8 *key, U8 *value)
 {
-    U8 *header = MAlloc(sizeof(U8) * (StrLen(key) + StrLen(value) + 5));
-    StrPrint(header, "%s: %s", key, value);
-
+    U8 *header = StrPrint(NULL, "%s: %s", key, value);
     RequestAddLine(request, header);
-    Free(header);
+    //Free(header);
 }
 
-public Request *CreateRequest(U8 *requestType, U8 *url)
+public Request *RequestNew(U8 *requestType, U8 *url)
 {
     U8 *addr = GetHost(url);
     I32 port = GetPort(url);
@@ -77,28 +78,51 @@ public Request *CreateRequest(U8 *requestType, U8 *url)
     I32 sockfd = NetConnect(addr, port);
 
     // Create a request object
-    Request *request = MAlloc(sizeof(Request));
+    Request *request = MAlloc(sizeof(Request))(Request *);
     request->sockfd = sockfd;
     request->url = url;
-    request->headers = PtrVecNew(0);
-    request->auth = "";
+    request->headers = PtrVecNew();
     request->body = JsonParse("{}");
 
     // Construct the request
     U8 *startLine = StrPrint(NULL, "%s / HTTP/1.1", requestType);
     RequestAddLine(request, startLine);
     RequestAddHeader(request, "Host", request->url);
-    RequestAddHeader(request, "Authorization", request->auth);
     RequestAddHeader(request, "Connection", "close");
 
     return request;
 }
 
-public U0 GET(U8 *url, U8 *data = "{}")
+private U8 *RequestReadBuffer(Request *request)
 {
-    Request *request = CreateRequest("GET", url);
-    request->body = JsonParse(data);
+    U8 *response = "";
+    U8 buffer[BUFFER_SIZE];
+    I64 contentLength = 0;
+    I64 bytesRead = -1;
 
+    while (bytesRead != 0)
+    {
+        bytesRead = read(request->sockfd, buffer, BUFFER_SIZE-1);
+        buffer[bytesRead+1] = 0;
+        response = StrMerge(response, buffer);
+    }
+
+    return response;
+}
+
+private Response ResponseNew()
+{
+
+}
+
+private Response ParseResponseBuffer(U8 *buffer)
+{
+
+}
+
+//public Response RequestExecute(Request *request)
+public U8 *RequestExecute(Request *request)
+{
     if (!JsonIsNull(request->body) && JsonOk(request->body))
     {
         U8 *body = JsonToString(request->body);
@@ -111,23 +135,23 @@ public U0 GET(U8 *url, U8 *data = "{}")
         RequestAddLine(request, body);
     }
 
-    // Send the GET request
-    for (I64 i = 0; i < PtrVecCapacity(request->headers); i++)
+    else
+        RequestAddLine(request, "");
+
+    for (I64 i = 0; i < request->headers->size; i++)
     {
-        U8 *line = PtrVecGet(request, i);
+        U8 *line = PtrVecGet(request->headers, i);
         write(request->sockfd, line, StrLen(line));
     }
 
     // Now we try to read something :sob:
     U8 buffer[BUFFER_SIZE];
-    I32 bytes_read = read(request->sockfd, buffer, BUFFER_SIZE-1);
+    I32 bytesRead = -1;
 
-    "URL: %s\n", url;
-    "Bytes read: %d\n", bytes_read;
-    "Buffer:\n%s\n", buffer;
+    //PtrVecRelease(request);
+    //PtrVecClear(request);
+    //Free(request);
 
-    PtrVecRelease(request);
-    PtrVecClear(request);
-    Free(request);
+    return RequestReadBuffer(request);
 }
 
