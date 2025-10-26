@@ -51,6 +51,47 @@ public I64 FindSubStr(U8 *src, U8 *substr)
     return -1;
 }
 
+// Counts the occurrences of substr in src
+public I64 CountSubStr(U8 *src, U8 *substr)
+{
+    I64 count = -1;
+    I64 location = 0;
+
+    while (location != -1)
+    {
+        count++;
+        location = FindSubStr(src+location, substr);
+    }
+
+    return count;
+}
+
+// Splits a string by a given delimiter
+// Returns a List* (heap allocated)
+public List *SplitStr(U8 *string, U8 *delimiter)
+{
+    I64 occurences = CountSubStr(string, delimiter);
+    List *list = ListNew();
+
+    I64 location = 0;
+    while (location > -1)
+    {
+        I64 idx = FindSubStr(string+location, delimiter);
+
+        if (idx != -1)
+        {
+            U8 *line = GetSubStr(string, location, idx-1);
+            ListAppend(list, line);
+            location = idx + StrLen(delimiter) - 1;
+            //Free(line); // BUG: If shit super breaks it IS this line
+        }
+
+        else location = idx;
+    }
+
+    return list;
+}
+
 // Returns 1 if the given chr is a digit, 0 otherwise
 public Bool IsDigit(U8 chr)
 {
