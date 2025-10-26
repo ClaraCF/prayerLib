@@ -23,8 +23,9 @@ public U8 *GetHost(U8 *url)
 {
     // Remove protocol from url
     I64 protocolSeparatorLocation = FindSubStr(url, "://");
+    I64 protocolLength = StrLen(url) - protocolSeparatorLocation - 3;
     if (protocolSeparatorLocation != -1)
-        url = GetSubStr(url, protocolSeparatorLocation, StrLen(url) - 3);
+        url = GetSubStr(url, protocolSeparatorLocation+3, protocolLength);
 
     // Remove route from url
     I64 routeSeparatorLocation = FindChar(url, '/');
@@ -45,8 +46,9 @@ public I32 GetPort(U8 *url)
 {
     // Remove protocol from url
     I64 protocolSeparatorLocation = FindSubStr(url, "://");
+    I64 protocolLength = StrLen(url) - protocolSeparatorLocation - 3;
     if (protocolSeparatorLocation != -1)
-        url = GetSubStr(url, protocolSeparatorLocation, StrLen(url) - 3);
+        url = GetSubStr(url, protocolSeparatorLocation+3, protocolLength);
 
     // Remove route from url
     I64 routeSeparatorLocation = FindChar(url, '/');
@@ -70,8 +72,9 @@ public U8 *GetRoute(U8 *url)
 {
     // Remove protocol from url
     I64 protocolSeparatorLocation = FindSubStr(url, "://");
+    I64 protocolLength = StrLen(url) - protocolSeparatorLocation - 3;
     if (protocolSeparatorLocation != -1)
-        url = GetSubStr(url, protocolSeparatorLocation, StrLen(url) - 3);
+        url = GetSubStr(url, protocolSeparatorLocation+3, protocolLength);
 
     I64 routeLocation = FindChar(url, '/');
     
