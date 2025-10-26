@@ -113,10 +113,9 @@ public I32 SCToI(U8 chr)
 // If chr is not a digit, an arbitrary number will be returned. May lead to undefined behaviour.
 public I32 CToI32(U8 chr)
 {
-    return chr - 48;
+    return (chr - 48)(I32);
 }
 
-// FIX: Only works for numbers up to 3 digits
 // Converts an ASCII  U8* nptr to an I32
 // If a non-digit character is encountered, the function will stop processing.
 public I32 AToI32(U8 *nptr)
@@ -129,7 +128,11 @@ public I32 AToI32(U8 *nptr)
     Bool isNegative = (nptr[0] == '-');
     I32 result = 0;
 
-    for (U64 i = 0; i < len; i++)
+    I64 i = 0;
+    if (isNegative)
+        i = 1;
+
+    for (i; i < len; i++)
     {
         if (!IsDigit(nptr[i]))
         {
@@ -138,10 +141,9 @@ public I32 AToI32(U8 *nptr)
             return result;
         }
 
-        // HACK: For some god forsaken reason I have to delegate to a temp value.
-        // Operating result directly breaks everything
-        I32 temp = (result * 10) + CToI32(nptr[i]);
-        result = temp;
+        // (result * 10) + CToI32(nptr[i])
+        result *= 10;
+        result += CToI32(nptr[i]);
     }
 
     if (isNegative)
