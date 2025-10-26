@@ -116,12 +116,8 @@ private U8 *RequestReadBuffer(Request *request)
     {
         bytesRead = read(request->sockfd, buffer, BUFFER_SIZE-1);
         buffer[bytesRead+1] = 0;
-        //"[DEBUG] Response: %s\n", response;
-        //"[DEBUG] Buffer: %s\n", buffer;
         bufStr = StrNew(buffer);
-        //"[DEBUG] bufStr: %s\n", bufStr;
         response = StrMerge(response, bufStr);
-        //"[DEBUG] Response: %s\n\n", response;
     }
 
     return response;
