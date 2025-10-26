@@ -106,6 +106,31 @@ public Bool RequestSetAuthorization(Request *request, U8 *auth)
     return RequestAddHeader(request, "Authorization", auth);
 }
 
+// Sets the Accept header for the request.
+// If it is already set, replaces it.
+// Returns 1 on success, 0 on failure.
+public Bool RequestSetAccept(Request *request, U8 *accept)
+{
+    RequestRemoveHeader(request, "Accept");
+    return RequestAddHeader(request, "Accept", accept);
+}
+
+/* Adds an additional accepted format to the Accept header.
+ * If the header does not exist, creates it.
+ * Will not check for duplicated entries. There is nothing
+   stopping you from ending up with
+   Accept: application/json, application/json, application/json, application/json
+ * Returns 1 on success, 0 on failure.
+ * Be thoughtful when adding entries to accept, as I have no plans of
+   programming a "RequestRemoveAccept" anytime soon (cry).
+ TODO: Program a RequestRemoveAccept();
+*/
+// TODO: Code this shit
+public Bool RequestAddAccept(Request *request, U8 *accept)
+{
+
+}
+
 private U8 *RequestReadBuffer(Request *request)
 {
     U8 *response = NULL, *bufStr = NULL;

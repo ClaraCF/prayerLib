@@ -121,29 +121,22 @@ public I32 CToI32(U8 chr)
 public I32 AToI32(U8 *nptr)
 {
     U64 len = StrLen(nptr);
-
     if (len == 0)
         return 0;
 
     Bool isNegative = (nptr[0] == '-');
     I32 result = 0;
 
-    I64 i = 0;
-    if (isNegative)
-        i = 1;
-
-    for (i; i < len; i++)
+    for (I64 i = isNegative; i < len; i++)
     {
         if (!IsDigit(nptr[i]))
-        {
-            if (isNegative)
-                result *= -1;
-            return result;
-        }
+            i = len;
 
-        // (result * 10) + CToI32(nptr[i])
-        result *= 10;
-        result += CToI32(nptr[i]);
+        else
+        {
+            result *= 10;
+            result += CToI32(nptr[i]);
+        }
     }
 
     if (isNegative)
