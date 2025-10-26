@@ -1,7 +1,7 @@
 #include "./src/wheel.HC"
 #include "./src/net.HC"
 
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 32
 
 public class Request
 {
@@ -108,16 +108,20 @@ public Bool RequestSetAuthorization(Request *request, U8 *auth)
 
 private U8 *RequestReadBuffer(Request *request)
 {
-    U8 *response = "";
+    U8 *response = NULL, *bufStr = NULL;
     U8 buffer[BUFFER_SIZE];
-    buffer[BUFFER_SIZE-1] = 0;
     I64 bytesRead = -1;
 
     while (bytesRead != 0)
     {
         bytesRead = read(request->sockfd, buffer, BUFFER_SIZE-1);
         buffer[bytesRead+1] = 0;
-        response = StrMerge(response, buffer);
+        //"[DEBUG] Response: %s\n", response;
+        //"[DEBUG] Buffer: %s\n", buffer;
+        bufStr = StrNew(buffer);
+        //"[DEBUG] bufStr: %s\n", bufStr;
+        response = StrMerge(response, bufStr);
+        //"[DEBUG] Response: %s\n\n", response;
     }
 
     return response;
@@ -216,8 +220,6 @@ public Response *RequestExecute(Request *request)
     }
 
     U8 *buffer = RequestReadBuffer(request);
-
-    "[DEBUG] buffer:\n%s\n\n", buffer;
     ParseResponseLine(response, buffer);
 
     //PtrVecRelease(request);

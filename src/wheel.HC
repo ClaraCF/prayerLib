@@ -28,8 +28,9 @@ public I64 FindChar(U8 *src, U8 chr)
 // Returns an empty string if any errors occur
 public U8 *GetSubStr(U8 *src, I64 off, I64 len)
 {
-    if ((off + len) >= (StrLen(src) + 1))
+    if ((off + len) >= (StrLen(src) + 1)){
         return StrNew("");
+    }
 
     return StrNCpy(src+off, len);
 }
@@ -187,3 +188,4 @@ public I64 FindSubStrInPtrVec(PtrVec *vec, U8 *substr)
 
     return -1;
 }
+
