@@ -20,6 +20,29 @@ public class Response
     Json *content;
 };
 
+// This funcion will free the memory of a Request
+// and all of its internal structures
+public U0 RequestRelease(Request *request)
+{
+    Free(request->url);
+    PtrVecRelease(request->headers);
+    JsonRelease(request->body);
+    Free(request);
+    request = NULL;
+}
+
+// This funcion will free the memory of a Response
+// and all of its internal structures
+public U0 ResponseRelease(Response *response)
+{
+    Free(response->raw);
+    Free(response->reason);
+    PtrVecRelease(response->headers);
+    JsonRelease(response->content);
+    Free(response);
+    response = NULL;
+}
+
 private U0 RequestAddLine(Request *request, U8 *line)
 {
     U8 *header = StrPrint(NULL, "%s\r\n", line);
