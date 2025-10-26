@@ -74,6 +74,7 @@ public Bool RequestRemoveHeader(Request *request, U8 *key)
 {
     U8 *header = StrMerge(key, ": ");
     I64 idx = FindSubStrInPtrVec(request->headers, header);
+    Free(header);
     
     if (idx == -1)
         return 0;
@@ -97,7 +98,7 @@ public Request *RequestNew(U8 *requestType, U8 *url)
     // Create a request object
     Request *request = MAlloc(sizeof(Request))(Request *);
     request->sockfd = sockfd;
-    request->url = url;
+    request->url = StrNew(url);
     request->headers = PtrVecNew();
     request->body = NULL;
 
@@ -106,6 +107,10 @@ public Request *RequestNew(U8 *requestType, U8 *url)
     RequestAddLine(request, requestLine);
     RequestAddHeader(request, "Host", host);
     RequestAddHeader(request, "Connection", "close");
+    
+    Free(host);
+    Free(route);
+    Free(requestLine);
 
     return request;
 }
@@ -166,6 +171,8 @@ private U8 *RequestReadBuffer(Request *request)
         bufStr = StrNew(buffer);
         response = StrMerge(response, bufStr);
     }
+
+    Free(bufStr);
 
     return response;
 }
@@ -229,7 +236,8 @@ private U0 ParseResponseHeaders(Response *response, U8 *buffer)
     }
 
     ListRelease(lines, NULL);
-
+    Free(lines);
+    Free(line);
 }
 
 private U0 ParseResponseBody(Response *response, U8 *buffer)
@@ -251,6 +259,9 @@ public Response *RequestExecute(Request *request)
         RequestAddHeader(request, "Content-Length", len);
         RequestAddLine(request, "");
         RequestAddLine(request, body);
+
+        Free(body);
+        Free(len);
     }
 
     else
@@ -260,14 +271,12 @@ public Response *RequestExecute(Request *request)
     {
         U8 *line = PtrVecGet(request->headers, i);
         write(request->sockfd, line, StrLen(line));
+        Free(line);
     }
 
     U8 *buffer = RequestReadBuffer(request);
     ParseResponseLine(response, buffer);
 
-    //PtrVecRelease(request);
-    //PtrVecClear(request);
-    //Free(request);
     Free(buffer);
 
     return response;
