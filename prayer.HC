@@ -19,18 +19,44 @@ public class Response
     U8 *content;
 };
 
-public U0 RequestAddLine(Request *request, U8 *line)
+private U0 RequestAddLine(Request *request, U8 *line)
 {
     U8 *header = StrPrint(NULL, "%s\r\n", line);
     PtrVecPush(request->headers, header);
     //Free(header);
 }
 
-public U0 RequestAddHeader(Request *request, U8 *key, U8 *value)
+// Adds a header to the request. key: value.
+// Returns 1 on success.
+// If the header already exists, does nothing and returns 0
+public Bool RequestAddHeader(Request *request, U8 *key, U8 *value)
 {
-    U8 *header = StrPrint(NULL, "%s: %s", key, value);
+    U8 *header = StrMerge(key, ": ");
+    if (FindSubStrInPtrVec(request->headers, header) != -1)
+    {
+        Free(header);
+        return 0;
+    }
+
+    header = StrPrint(NULL, "%s: %s", key, value);
     RequestAddLine(request, header);
-    //Free(header);
+
+    Free(header);   // BUG: If shit breaks comment this line
+    return 1;
+}
+
+// Removes a header from the request.
+// Returns 1 on success, 0 if not found.
+public Bool RequestRemoveHeader(Request *request, U8 *key)
+{
+    U8 *header = StrMerge(key, ": ");
+    I64 idx = FindSubStrInPtrVec(request->vec, header);
+    
+    if (idx == -1)
+        return 0;
+
+    PtrVecPopIdx(requests->vec, idx);
+    return 1;
 }
 
 public Request *RequestNew(U8 *requestType, U8 *url)
@@ -61,6 +87,24 @@ public Request *RequestNew(U8 *requestType, U8 *url)
     return request;
 }
 
+// Sets the User-Agent for the request.
+// If User-Agent is already set, it replaces it.
+// Returns 1 on success, 0 on failure.
+public Bool RequestSetUserAgent(Request *request, U8 *userAgent)
+{
+    RequestRemoveHeader(request, "User-Agent");
+    return RequestAddHeader(request, "User-Agent", userAgent);
+}
+
+// Sets the Authorization header for the request.
+// If it is already set, replaces it.
+// Returns 1 on success, 0 on failure.
+public Bool RequestSetAuthorization(Request *request, U8 *auth)
+{
+    RequestRemoveHeader(request, "Authorization");
+    return RequestAddHeader(request, "Authorization", auth);
+}
+
 private U8 *RequestReadBuffer(Request *request)
 {
     U8 *response = "";
@@ -73,7 +117,6 @@ private U8 *RequestReadBuffer(Request *request)
         bytesRead = read(request->sockfd, buffer, BUFFER_SIZE-1);
         buffer[bytesRead+1] = 0;
         response = StrMerge(response, buffer);
-        "%s", response;
     }
 
     return response;
