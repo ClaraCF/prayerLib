@@ -24,7 +24,6 @@ private U0 RequestAddLine(Request *request, U8 *line)
 {
     U8 *header = StrPrint(NULL, "%s\r\n", line);
     PtrVecPush(request->headers, header);
-    //Free(header);   // BUG: If shit breaks comment out this line
 }
 
 // Adds a header to the request. key: value.
@@ -42,7 +41,7 @@ public Bool RequestAddHeader(Request *request, U8 *key, U8 *value)
     header = StrPrint(NULL, "%s: %s", key, value);
     RequestAddLine(request, header);
 
-    //Free(header);   // BUG: If shit breaks comment this line
+    Free(header);
     return 1;
 }
 
@@ -181,8 +180,8 @@ private U0 ParseResponseLine(Response *response, U8 *buffer)
     response->statusCode = AToI32(statusCode);
     response->reason = StrNew(responseLine);
 
-    //Free(responseLine); // BUG: If shit breaks check this line
-    //Free(statusCode);
+    Free(responseLine);
+    Free(statusCode);
 }
 
 private U0 ParseResponseHeaders(Response *response, U8 *buffer)
