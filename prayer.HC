@@ -15,15 +15,16 @@ public class Response
 {
     U8 *raw;
     I32 statusCode;
+    U8 *reason;
     PtrVec *headers;
-    U8 *content;
+    Json *content;
 };
 
 private U0 RequestAddLine(Request *request, U8 *line)
 {
     U8 *header = StrPrint(NULL, "%s\r\n", line);
     PtrVecPush(request->headers, header);
-    //Free(header);
+    //Free(header);   // BUG: If shit breaks comment out this line
 }
 
 // Adds a header to the request. key: value.
@@ -41,7 +42,7 @@ public Bool RequestAddHeader(Request *request, U8 *key, U8 *value)
     header = StrPrint(NULL, "%s: %s", key, value);
     RequestAddLine(request, header);
 
-    Free(header);   // BUG: If shit breaks comment this line
+    //Free(header);   // BUG: If shit breaks comment this line
     return 1;
 }
 
@@ -50,12 +51,12 @@ public Bool RequestAddHeader(Request *request, U8 *key, U8 *value)
 public Bool RequestRemoveHeader(Request *request, U8 *key)
 {
     U8 *header = StrMerge(key, ": ");
-    I64 idx = FindSubStrInPtrVec(request->vec, header);
+    I64 idx = FindSubStrInPtrVec(request->headers, header);
     
     if (idx == -1)
         return 0;
 
-    PtrVecPopIdx(requests->vec, idx);
+    PtrVecPopIdx(request->headers, idx);
     return 1;
 }
 
@@ -76,7 +77,7 @@ public Request *RequestNew(U8 *requestType, U8 *url)
     request->sockfd = sockfd;
     request->url = url;
     request->headers = PtrVecNew();
-    request->body = JsonParse("{}");
+    request->body = NULL;
 
     // Construct the request
     U8 *requestLine = StrPrint(NULL, "%s %s HTTP/1.1", requestType, route);
@@ -109,7 +110,7 @@ private U8 *RequestReadBuffer(Request *request)
 {
     U8 *response = "";
     U8 buffer[BUFFER_SIZE];
-    I64 contentLength = 0;
+    buffer[BUFFER_SIZE-1] = 0;
     I64 bytesRead = -1;
 
     while (bytesRead != 0)
@@ -122,19 +123,77 @@ private U8 *RequestReadBuffer(Request *request)
     return response;
 }
 
-private Response ResponseNew()
+private Response *ResponseNew()
+{
+    Response *response = MAlloc(sizeof(Response))(Response *);
+    response->raw = "";
+    response->statusCode = 0;
+    response->reason = "";
+    response->headers = PtrVecNew();
+    response->content = NULL;
+
+    // TODO: Handle freeing this memory
+    return response;
+}
+
+private U0 ParseResponseLine(Response *response, U8 *buffer)
+{
+    response->raw = StrNew(buffer);
+
+    I64 responseLineIdx = FindChar(buffer, '\n');
+    U8 *responseLine = GetSubStr(buffer, 0, responseLineIdx-1);
+
+    // Remove the protocol HTTP/1.1 from the response line
+    I64 protocolIdx = FindChar(responseLine, ' ');
+    responseLine = GetSubStr(responseLine, protocolIdx+1, StrLen(responseLine)-protocolIdx-1);
+
+    I64 statusCodeIdx = FindChar(responseLine, ' ');
+    U8 *statusCode = GetSubStr(responseLine, 0, statusCodeIdx);
+
+    // Remove the status code from the response line
+    responseLine = GetSubStr(responseLine, statusCodeIdx+1, StrLen(responseLine)-statusCodeIdx-1);
+
+    response->statusCode = AToI32(statusCode);
+    response->reason = StrNew(responseLine);
+
+    //Free(responseLine); // BUG: If shit breaks check this line
+    //Free(statusCode);
+}
+
+private U0 ParseResponseHeaders(Response *response, U8 *buffer)
+{
+    List *lines = SplitStr(buffer, "\r\n");
+
+    // Remove the first line which is the response line
+    ListDeque(lines);
+
+    Bool headersDone = FALSE;
+    U8 *line;
+
+    while ((line = ListDeque(lines)(U8 *)) != NULL && !headersDone)
+    {
+        if (StrLen(line) != 0)
+        {
+            // TODO: Add the headers to the response
+            // I am really tired
+        }
+
+        else headersDone = TRUE;
+    }
+
+    ListRelease(lines, NULL);
+
+}
+
+private U0 ParseResponseBody(Response *response, U8 *buffer)
 {
 
 }
 
-private Response ParseResponseBuffer(U8 *buffer)
+public Response *RequestExecute(Request *request)
 {
+    Response *response = ResponseNew();
 
-}
-
-//public Response RequestExecute(Request *request)
-public U8 *RequestExecute(Request *request)
-{
     if (!JsonIsNull(request->body) && JsonOk(request->body))
     {
         U8 *body = JsonToString(request->body);
@@ -156,14 +215,16 @@ public U8 *RequestExecute(Request *request)
         write(request->sockfd, line, StrLen(line));
     }
 
-    // Now we try to read something :sob:
-    U8 buffer[BUFFER_SIZE];
-    I32 bytesRead = -1;
+    U8 *buffer = RequestReadBuffer(request);
+
+    "[DEBUG] buffer:\n%s\n\n", buffer;
+    ParseResponseLine(response, buffer);
 
     //PtrVecRelease(request);
     //PtrVecClear(request);
     //Free(request);
+    Free(buffer);
 
-    return RequestReadBuffer(request);
+    return response;
 }
 
