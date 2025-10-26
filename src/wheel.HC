@@ -109,3 +109,40 @@ public I32 AToI32(U8 *nptr)
     return result;
 }
 
+// Pops the element at index idx in a PtrVec* vec
+// Returns 0 on error, 1 on success
+public Bool PtrVecPopIdx(PtrVec *vec, I64 idx)
+{
+    if (idx >= vec->size || idx < 0)
+        return 0;
+
+    PtrVec *temp = PtrVecNew();
+
+    for (I64 i = vec->size-1; i > idx; i--)
+    {
+        PtrVecPush(temp, PtrVecGet(vec, i));
+        PtrVecPop(vec);
+    }
+
+    for (I64 i = temp->size-2; i != 0; i++)
+    {
+        PtrVecPush(vec, PtrVecGet(temp, i));
+    }
+
+    PtrVecRelease(temp);
+    return 1;
+}
+
+// Finds a substring substr in a PtrVec* vec.
+// Returns the index where the substr was found.
+// Returns -1 if not found.
+public I64 FindSubStrInPtrVec(PtrVec *vec, U8 *substr)
+{
+    for (I64 i = 0; i < vec->size; i++)
+    {
+        if (FindSubStr(PtrVecGet(vec, i), substr) != -1)
+            return i;
+    }
+
+    return -1;
+}
