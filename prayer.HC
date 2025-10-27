@@ -1,7 +1,12 @@
 #include "./src/wheel.HC"
 #include "./src/net.HC"
 
-#define BUFFER_SIZE 32
+#define BUFFER_SIZE 1024
+
+public class Header {
+    U8 *key;
+    U8 *value;
+};
 
 public class Request {
     I32 sockfd;
@@ -15,8 +20,18 @@ public class Response {
     I32 statusCode;
     U8 *reason;
     PtrVec *headers;
-    Json *content;
+    U8 *contentType;
+    U8 *content;
 };
+
+// This function will free the memory of a Header
+// and all of its internal structures
+public U0 HeaderRelease(Header *header) {
+    Free(header->key);
+    Free(header->valuee);
+    Free(header);
+    header = NULL;
+}
 
 // This funcion will free the memory of a Request
 // and all of its internal structures
@@ -34,7 +49,8 @@ public U0 ResponseRelease(Response *response) {
     Free(response->raw);
     Free(response->reason);
     PtrVecRelease(response->headers);
-    JsonRelease(response->content);
+    Free(response->contentType);
+    Free(response->content);
     Free(response);
     response = NULL;
 }
@@ -103,6 +119,30 @@ public Request *RequestNew(U8 *requestType, U8 *url) {
     return request;
 }
 
+// Returns the Content-Type of the Response as a U8* string
+// For example, "application/json".
+public U8 *ResponseGetContentType(Response *response) {
+    return response->contentType;
+}
+
+// Returns the raw http response as a U8* string
+public U8 *ResponseGetRaw(Response *response) {
+    return response->raw;
+}
+
+// Returns the status code of the response
+public I32 ResponseGetStatusCode(Response *response) {
+    return response->statusCode;
+}
+    
+// Returns the reason of the response as a U8* string
+public U8 *ResponseGetReason(Response *response) {
+    return response->reason;
+}
+
+// Returns a PtrVec* with the headers
+
+
 // Sets the User-Agent for the request.
 // If User-Agent is already set, it replaces it.
 // Returns 1 on success, 0 on failure.
@@ -162,10 +202,11 @@ private U8 *RequestReadBuffer(Request *request) {
 
 private Response *ResponseNew() {
     Response *response = MAlloc(sizeof(Response))(Response *);
-    response->raw = "";
+    response->raw = NULL;
     response->statusCode = 0;
-    response->reason = "";
+    response->reason = NULL;
     response->headers = PtrVecNew();
+    response->contentType = NULL;
     response->content = NULL;
 
     // TODO: Handle freeing this memory
