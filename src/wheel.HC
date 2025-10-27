@@ -12,11 +12,9 @@
 
 // Finds first instance of chr and returns its position in src
 // Returns -1 if its not found
-public I64 FindChar(U8 *src, U8 chr)
-{
+public I64 FindChar(U8 *src, U8 chr) {
     I64 srcLen = StrLen(src);
-    for (I64 i = 0; i < srcLen; i++)
-    {
+    for (I64 i = 0; i < srcLen; i++) {
         if (src[i] == chr)
             return i;
     }
@@ -26,8 +24,7 @@ public I64 FindChar(U8 *src, U8 chr)
 
 // Returns a NEW MAlloced substring of length len from the specified offset off in src.
 // Returns an empty string if any errors occur
-public U8 *GetSubStr(U8 *src, I64 off, I64 len)
-{
+public U8 *GetSubStr(U8 *src, I64 off, I64 len) {
     if ((off + len) >= (StrLen(src) + 1))
         return StrNew("");
 
@@ -36,13 +33,11 @@ public U8 *GetSubStr(U8 *src, I64 off, I64 len)
 
 // Finds first instance of substr and returns its position in src
 // Returns -1 if its not found
-public I64 FindSubStr(U8 *src, U8 *substr)
-{
+public I64 FindSubStr(U8 *src, U8 *substr) {
     I64 srcLen = StrLen(src);
     I64 substrLen = StrLen(substr);
 
-    for (I64 i = 0; i < srcLen-substrLen; i++)
-    {
+    for (I64 i = 0; i < srcLen-substrLen; i++) {
         U8 *search = GetSubStr(src, i, substrLen);
         if (!StrCmp(search, substr))
             return i;
@@ -52,13 +47,11 @@ public I64 FindSubStr(U8 *src, U8 *substr)
 }
 
 // Counts the occurrences of substr in src
-public I64 CountSubStr(U8 *src, U8 *substr)
-{
+public I64 CountSubStr(U8 *src, U8 *substr) {
     I64 count = -1;
     I64 location = 0;
 
-    while (location != -1)
-    {
+    while (location != -1) {
         count++;
         location = FindSubStr(src+location, substr);
     }
@@ -68,8 +61,7 @@ public I64 CountSubStr(U8 *src, U8 *substr)
 
 // Splits a string by a given delimiter
 // Returns a List* (heap allocated)
-public List *SplitStr(U8 *string, U8 *delimiter)
-{
+public List *SplitStr(U8 *string, U8 *delimiter) {
     I64 occurences = CountSubStr(string, delimiter);
     List *list = ListNew();
 
@@ -78,8 +70,7 @@ public List *SplitStr(U8 *string, U8 *delimiter)
     {
         I64 idx = FindSubStr(string+location, delimiter);
 
-        if (idx != -1)
-        {
+        if (idx != -1) {
             U8 *line = GetSubStr(string, location, idx-1);
             ListAppend(list, line);
             location = idx + StrLen(delimiter) - 1;
@@ -93,15 +84,13 @@ public List *SplitStr(U8 *string, U8 *delimiter)
 }
 
 // Returns 1 if the given chr is a digit, 0 otherwise
-public Bool IsDigit(U8 chr)
-{
+public Bool IsDigit(U8 chr) {
     return (chr >= 48) && (chr <= 57);
 }
 
 // Converts a U8 character digit chr into its I32 representation
 // If chr is not a digit, -1 is returned.
-public I32 SCToI(U8 chr)
-{
+public I32 SCToI(U8 chr) {
     if (!IsDigit(chr))
         return -1;
 
@@ -111,15 +100,14 @@ public I32 SCToI(U8 chr)
 // Converts a U8 character digit chr into its I32 representation
 // To improve performance, this function is UNCHECKED.
 // If chr is not a digit, an arbitrary number will be returned. May lead to undefined behaviour.
-public I32 CToI32(U8 chr)
-{
+// TODO: Change this to U64
+public I32 CToI32(U8 chr) {
     return (chr - 48)(I32);
 }
 
 // Converts an ASCII  U8* nptr to an I32
 // If a non-digit character is encountered, the function will stop processing.
-public I32 AToI32(U8 *nptr)
-{
+public I32 AToI32(U8 *nptr) {
     U64 len = StrLen(nptr);
     if (len == 0)
         return 0;
@@ -127,13 +115,11 @@ public I32 AToI32(U8 *nptr)
     Bool isNegative = (nptr[0] == '-');
     I32 result = 0;
 
-    for (I64 i = isNegative; i < len; i++)
-    {
+    for (I64 i = isNegative; i < len; i++) {
         if (!IsDigit(nptr[i]))
             i = len;
 
-        else
-        {
+        else {
             result *= 10;
             result += CToI32(nptr[i]);
         }
@@ -147,21 +133,18 @@ public I32 AToI32(U8 *nptr)
 
 // Pops the element at index idx in a PtrVec* vec
 // Returns 0 on error, 1 on success
-public Bool PtrVecPopIdx(PtrVec *vec, I64 idx)
-{
+public Bool PtrVecPopIdx(PtrVec *vec, I64 idx) {
     if (idx >= vec->size || idx < 0)
         return 0;
 
     PtrVec *temp = PtrVecNew();
 
-    for (I64 i = vec->size-1; i > idx; i--)
-    {
+    for (I64 i = vec->size-1; i > idx; i--) {
         PtrVecPush(temp, PtrVecGet(vec, i));
         PtrVecPop(vec);
     }
 
-    for (I64 i = temp->size-2; i != 0; i++)
-    {
+    for (I64 i = temp->size-2; i != 0; i++) {
         PtrVecPush(vec, PtrVecGet(temp, i));
     }
 
@@ -172,10 +155,8 @@ public Bool PtrVecPopIdx(PtrVec *vec, I64 idx)
 // Finds a substring substr in a PtrVec* vec.
 // Returns the index where the substr was found.
 // Returns -1 if not found.
-public I64 FindSubStrInPtrVec(PtrVec *vec, U8 *substr)
-{
-    for (I64 i = 0; i < vec->size; i++)
-    {
+public I64 FindSubStrInPtrVec(PtrVec *vec, U8 *substr) {
+    for (I64 i = 0; i < vec->size; i++) {
         if (FindSubStr(PtrVecGet(vec, i), substr) != -1)
             return i;
     }

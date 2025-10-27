@@ -3,16 +3,14 @@
 
 #define BUFFER_SIZE 32
 
-public class Request
-{
+public class Request {
     I32 sockfd;
     U8 *url;
     PtrVec *headers;
     Json *body;
 };
 
-public class Response
-{
+public class Response {
     U8 *raw;
     I32 statusCode;
     U8 *reason;
@@ -22,8 +20,7 @@ public class Response
 
 // This funcion will free the memory of a Request
 // and all of its internal structures
-public U0 RequestRelease(Request *request)
-{
+public U0 RequestRelease(Request *request) {
     Free(request->url);
     PtrVecRelease(request->headers);
     JsonRelease(request->body);
@@ -33,8 +30,7 @@ public U0 RequestRelease(Request *request)
 
 // This funcion will free the memory of a Response
 // and all of its internal structures
-public U0 ResponseRelease(Response *response)
-{
+public U0 ResponseRelease(Response *response) {
     Free(response->raw);
     Free(response->reason);
     PtrVecRelease(response->headers);
@@ -43,8 +39,7 @@ public U0 ResponseRelease(Response *response)
     response = NULL;
 }
 
-private U0 RequestAddLine(Request *request, U8 *line)
-{
+private U0 RequestAddLine(Request *request, U8 *line) {
     U8 *header = StrPrint(NULL, "%s\r\n", line);
     PtrVecPush(request->headers, header);
 }
@@ -52,11 +47,9 @@ private U0 RequestAddLine(Request *request, U8 *line)
 // Adds a header to the request. key: value.
 // Returns 1 on success.
 // If the header already exists, does nothing and returns 0
-public Bool RequestAddHeader(Request *request, U8 *key, U8 *value)
-{
+public Bool RequestAddHeader(Request *request, U8 *key, U8 *value) {
     U8 *header = StrMerge(key, ": ");
-    if (FindSubStrInPtrVec(request->headers, header) != -1)
-    {
+    if (FindSubStrInPtrVec(request->headers, header) != -1) {
         Free(header);
         return 0;
     }
@@ -70,8 +63,7 @@ public Bool RequestAddHeader(Request *request, U8 *key, U8 *value)
 
 // Removes a header from the request.
 // Returns 1 on success, 0 if not found.
-public Bool RequestRemoveHeader(Request *request, U8 *key)
-{
+public Bool RequestRemoveHeader(Request *request, U8 *key) {
     U8 *header = StrMerge(key, ": ");
     I64 idx = FindSubStrInPtrVec(request->headers, header);
     Free(header);
@@ -83,11 +75,7 @@ public Bool RequestRemoveHeader(Request *request, U8 *key)
     return 1;
 }
 
-public Request *RequestNew(U8 *requestType, U8 *url)
-{
-    // TODO: Handle protocols other than http
-    //U8 *protocol = GetProtocol(url);
-
+public Request *RequestNew(U8 *requestType, U8 *url) {
     U8 *host = GetHost(url);
     I32 port = GetPort(url);
     U8 *route = GetRoute(url);
@@ -118,8 +106,7 @@ public Request *RequestNew(U8 *requestType, U8 *url)
 // Sets the User-Agent for the request.
 // If User-Agent is already set, it replaces it.
 // Returns 1 on success, 0 on failure.
-public Bool RequestSetUserAgent(Request *request, U8 *userAgent)
-{
+public Bool RequestSetUserAgent(Request *request, U8 *userAgent) {
     RequestRemoveHeader(request, "User-Agent");
     return RequestAddHeader(request, "User-Agent", userAgent);
 }
@@ -127,8 +114,7 @@ public Bool RequestSetUserAgent(Request *request, U8 *userAgent)
 // Sets the Authorization header for the request.
 // If it is already set, replaces it.
 // Returns 1 on success, 0 on failure.
-public Bool RequestSetAuthorization(Request *request, U8 *auth)
-{
+public Bool RequestSetAuthorization(Request *request, U8 *auth) {
     RequestRemoveHeader(request, "Authorization");
     return RequestAddHeader(request, "Authorization", auth);
 }
@@ -136,8 +122,7 @@ public Bool RequestSetAuthorization(Request *request, U8 *auth)
 // Sets the Accept header for the request.
 // If it is already set, replaces it.
 // Returns 1 on success, 0 on failure.
-public Bool RequestSetAccept(Request *request, U8 *accept)
-{
+public Bool RequestSetAccept(Request *request, U8 *accept) {
     RequestRemoveHeader(request, "Accept");
     return RequestAddHeader(request, "Accept", accept);
 }
@@ -158,14 +143,12 @@ public Bool RequestAddAccept(Request *request, U8 *accept)
 
 }
 
-private U8 *RequestReadBuffer(Request *request)
-{
+private U8 *RequestReadBuffer(Request *request) {
     U8 *response = NULL, *bufStr = NULL;
     U8 buffer[BUFFER_SIZE];
     I64 bytesRead = -1;
 
-    while (bytesRead != 0)
-    {
+    while (bytesRead != 0) {
         bytesRead = read(request->sockfd, buffer, BUFFER_SIZE-1);
         buffer[bytesRead+1] = 0;
         bufStr = StrNew(buffer);
@@ -177,8 +160,7 @@ private U8 *RequestReadBuffer(Request *request)
     return response;
 }
 
-private Response *ResponseNew()
-{
+private Response *ResponseNew() {
     Response *response = MAlloc(sizeof(Response))(Response *);
     response->raw = "";
     response->statusCode = 0;
@@ -190,8 +172,7 @@ private Response *ResponseNew()
     return response;
 }
 
-private U0 ParseResponseLine(Response *response, U8 *buffer)
-{
+private U0 ParseResponseLine(Response *response, U8 *buffer) {
     response->raw = StrNew(buffer);
 
     I64 responseLineIdx = FindChar(buffer, '\n');
@@ -214,8 +195,7 @@ private U0 ParseResponseLine(Response *response, U8 *buffer)
     Free(statusCode);
 }
 
-private U0 ParseResponseHeaders(Response *response, U8 *buffer)
-{
+private U0 ParseResponseHeaders(Response *response, U8 *buffer) {
     List *lines = SplitStr(buffer, "\r\n");
 
     // Remove the first line which is the response line
@@ -224,10 +204,8 @@ private U0 ParseResponseHeaders(Response *response, U8 *buffer)
     Bool headersDone = FALSE;
     U8 *line;
 
-    while ((line = ListDeque(lines)(U8 *)) != NULL && !headersDone)
-    {
-        if (StrLen(line) != 0)
-        {
+    while ((line = ListDeque(lines)(U8 *)) != NULL && !headersDone) {
+        if (StrLen(line) != 0) {
             // TODO: Add the headers to the response
             // I am really tired
         }
@@ -240,13 +218,11 @@ private U0 ParseResponseHeaders(Response *response, U8 *buffer)
     Free(line);
 }
 
-private U0 ParseResponseBody(Response *response, U8 *buffer)
-{
+private U0 ParseResponseBody(Response *response, U8 *buffer) {
 
 }
 
-public U0 RequestSetBody(Request *request, Json *body)
-{
+public U0 RequestSetBody(Request *request, Json *body) {
     U8 *bodyStr = JsonToString(body);
     I64 len = StrLen(bodyStr);
 
@@ -257,12 +233,10 @@ public U0 RequestSetBody(Request *request, Json *body)
     Free(bodyStr);
 }
 
-public Response *RequestExecute(Request *request)
-{
+public Response *RequestExecute(Request *request) {
     Response *response = ResponseNew();
 
-    if (!JsonIsNull(request->body) && JsonOk(request->body))
-    {
+    if (!JsonIsNull(request->body) && JsonOk(request->body)) {
         U8 *body = JsonToString(request->body);
         RequestAddLine(request, "");
         RequestAddLine(request, StrNew(body));
@@ -272,8 +246,7 @@ public Response *RequestExecute(Request *request)
     else
         RequestAddLine(request, "");
 
-    for (I64 i = 0; i < request->headers->size; i++)
-    {
+    for (I64 i = 0; i < request->headers->size; i++) {
         U8 *line = PtrVecGet(request->headers, i);
         write(request->sockfd, line, StrLen(line));
         Free(line);
