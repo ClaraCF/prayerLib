@@ -28,7 +28,7 @@ public class Response {
 // and all of its internal structures
 public U0 HeaderRelease(Header *header) {
     Free(header->key);
-    Free(header->valuee);
+    Free(header->value);
     Free(header);
     header = NULL;
 }
