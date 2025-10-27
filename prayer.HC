@@ -245,6 +245,18 @@ private U0 ParseResponseBody(Response *response, U8 *buffer)
 
 }
 
+public U0 RequestSetBody(Request *request, Json *body)
+{
+    U8 *bodyStr = JsonToString(body);
+    I64 len = StrLen(bodyStr);
+
+    RequestAddHeader(request, "Content-Type", "application/json");
+    RequestAddHeader(request, "Content-Length", StrPrint(NULL, "%d", len));
+    request->body = body;
+
+    Free(bodyStr);
+}
+
 public Response *RequestExecute(Request *request)
 {
     Response *response = ResponseNew();
@@ -252,16 +264,9 @@ public Response *RequestExecute(Request *request)
     if (!JsonIsNull(request->body) && JsonOk(request->body))
     {
         U8 *body = JsonToString(request->body);
-        U8 *len;
-        I64ToStr(len, StrLen(body));
-
-        RequestAddHeader(request, "Content-Type", "application/json");
-        RequestAddHeader(request, "Content-Length", len);
         RequestAddLine(request, "");
-        RequestAddLine(request, body);
-
+        RequestAddLine(request, StrNew(body));
         Free(body);
-        Free(len);
     }
 
     else
