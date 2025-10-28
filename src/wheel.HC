@@ -59,28 +59,60 @@ public I64 CountSubStr(U8 *src, U8 *substr) {
     return count;
 }
 
-// Splits a string by a given delimiter
-// Returns a List* (heap allocated)
-public List *SplitStr(U8 *string, U8 *delimiter) {
-    I64 occurences = CountSubStr(string, delimiter);
-    List *list = ListNew();
+// Returns a list with the indexes of each occurence of substr in src
+public IntVec *OccurencesIndexes(U8 *src, U8 *substr) {
+    IntVec *occurences = IntVecNew();
 
+    U8 *buffer = StrNew(src);
+    I64 substrLen = StrLen(substr);
     I64 location = 0;
-    while (location > -1)
-    {
-        I64 idx = FindSubStr(string+location, delimiter);
+    I64 prevLen = 0;
+    I64 index = 0;
 
-        if (idx != -1) {
-            U8 *line = GetSubStr(string, location, idx-1);
-            ListAppend(list, line);
-            location = idx + StrLen(delimiter) - 1;
-            //Free(line); // BUG: If shit super breaks it IS this line
+    while (location != -1) {
+        location = FindSubStr(buffer, substr);
+        index = location;
+
+        if (location != -1) {
+            location = location + prevLen;
+            IntVecPush(occurences, location);
+
+            prevLen = location;
+            I64 offset = index + substrLen;
+            I64 length = StrLen(buffer) - offset;
+
+            buffer = GetSubStr(buffer, offset, length);
         }
-
-        else location = idx;
     }
 
-    return list;
+    Free(buffer);
+    return occurences;
+}
+
+// Splits a string by a given delimiter
+// Returns a PtrVec* (heap allocated)
+public PtrVec *SplitStr(U8 *string, U8 *delimiter) {
+    IntVec *occurences = OccurencesIndexes(string, delimiter);
+    PtrVec *splitted = PtrVecNew();
+    I64 delimLen = StrLen(delimiter);
+
+    for (I64 i = 0; i < occurences->size; i++) {
+        U8 *line;
+        I64 index = IntVecGet(occurences, i);
+
+        if (i+1 == occurences->size)
+            line = GetSubStr(string, index, StrLen(string)-index);
+        else
+            line = GetSubStr(string, index, IntVecGet(occurences, i+1)-delimLen);
+
+        PtrVecPush(splitted, line);
+        
+        //Free(line);
+    }
+
+    IntVecRelease(occurences);
+
+    return splitted;
 }
 
 // Returns 1 if the given chr is a digit, 0 otherwise
