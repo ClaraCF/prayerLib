@@ -1,6 +1,16 @@
 #include "./src/wheel.HC"
 #include "./src/net.HC"
 
+U0 Debug1(){}
+U0 Debug2(){}
+U0 Debug3(){}
+U0 Debug4(){}
+U0 Debug5(){}
+U0 Debug6(){}
+U0 Debug7(){}
+U0 Debug8(){}
+U0 Debug9(){}
+
 #define BUFFER_SIZE 1024
 
 public class Header {
@@ -11,6 +21,7 @@ public class Header {
 public class Request {
     I32 sockfd;
     U8 *url;
+    U8 *requestLine;
     PtrVec *headers;
     Json *body;
 };
@@ -55,39 +66,72 @@ public U0 ResponseRelease(Response *response) {
     response = NULL;
 }
 
-private U0 RequestAddLine(Request *request, U8 *line) {
-    U8 *header = StrPrint(NULL, "%s\r\n", line);
-    PtrVecPush(request->headers, header);
+public Header *HeaderNew(U8 *key = NULL, U8 *value = NULL) {
+    Header *header = MAlloc(sizeof(Header))(Header *);
+    header->key = key;
+    header->value = value;
+    return header;
 }
 
-// Adds a header to the request. key: value.
-// Returns 1 on success.
-// If the header already exists, does nothing and returns 0
-public Bool RequestAddHeader(Request *request, U8 *key, U8 *value) {
-    U8 *header = StrMerge(key, ": ");
-    if (FindSubStrInPtrVec(request->headers, header) != -1) {
-        Free(header);
-        return 0;
+// TODO: PtrVecFindHeader should check for key AND value
+// Implement a different PtrVecFindHeaderByKey.
+
+/* Search vec for header.
+ * Returns the index where header is located in vec.
+ * Returns -1 if not found
+*/
+private I64 PtrVecFindHeader(PtrVec* vec, Header *header) {
+    for (I64 i = 0; i < vec->size; i++) {
+        Header *vecHeader = PtrVecGet(vec, i)(Header *);
+
+        if (!StrCmp(vecHeader->key, header->key))
+            return i;
     }
 
-    header = StrPrint(NULL, "%s: %s", key, value);
-    RequestAddLine(request, header);
+    return -1;
+}
 
-    Free(header);
+/* Search vec for header.
+ * Returns 1 if it exists in vec.
+ * Returns 0 otherwise.
+*/
+private Bool PtrVecHeaderExists(PtrVec *vec, Header *header) {
+    return PtrVecFindHeader(vec, header) != -1;
+}
+
+/* Adds a header to the request.
+ * Returns 1 on success.
+ * If the header already exists, does nothing and returns 0.
+*/
+public Bool RequestAddHeader(Request *request, Header *header) {
+    if (PtrVecHeaderExists(request->headers, header))
+        return 0;
+
+    PtrVecPush(request->headers, header);
+
     return 1;
 }
 
-// Removes a header from the request.
-// Returns 1 on success, 0 if not found.
-public Bool RequestRemoveHeader(Request *request, U8 *key) {
-    U8 *header = StrMerge(key, ": ");
-    I64 idx = FindSubStrInPtrVec(request->headers, header);
-    Free(header);
+// TODO: RemoveHeader should use RequestRemoveHeader matching key AND value
+// Implement a different RequestRemoveHeaderByKey
+
+/* Removes a header from the request, matching by key.
+ * Returns 1 on success, 0 if not found.
+ * If freeMem is TRUE, function will call Free() on the header before popping it off
+   the PtrVec to avoid leaking memory in cases when uses a different Header instance with
+   the same value for "key".
+*/
+public Bool RequestRemoveHeader(Request *request, Header *header, Bool freeMem = FALSE) {
+    I64 idx = PtrVecFindHeader(request->headers, header);
     
     if (idx == -1)
         return 0;
 
+    if (freeMem)
+        Free(PtrVecGet(request->headers, idx));
+
     PtrVecPopIdx(request->headers, idx);
+
     return 1;
 }
 
@@ -107,14 +151,15 @@ public Request *RequestNew(U8 *requestType, U8 *url) {
     request->body = NULL;
 
     // Construct the request
-    U8 *requestLine = StrPrint(NULL, "%s %s HTTP/1.1", requestType, route);
-    RequestAddLine(request, requestLine);
-    RequestAddHeader(request, "Host", host);
-    RequestAddHeader(request, "Connection", "close");
+    request->requestLine = StrPrint(NULL, "%s %s HTTP/1.1\r\n", requestType, route);
+    Header *hostHeader = HeaderNew("Host", StrNew(host));
+    Header *connHeader = HeaderNew("Connection", "close");
+
+    RequestAddHeader(request, hostHeader);
+    RequestAddHeader(request, connHeader);
     
     Free(host);
     Free(route);
-    Free(requestLine);
 
     return request;
 }
@@ -140,31 +185,70 @@ public U8 *ResponseGetReason(Response *response) {
     return response->reason;
 }
 
-// Returns a PtrVec* with the headers
+// Returns a PtrVec* with the headers for a Request
+public PtrVec *RequestGetHeaders(Request *request) {
+    return request->headers;
+}
 
+// Returns a PtrVec* with the headers for a Response
+public PtrVec *ResponseGetHeaders(Response *response) {
+    return response->headers;
+}
+
+// Searches for header with key in a Request.
+// Returns a pointer to that header.
+// Returns NULL if not found
+public Header *RequestGetHeader(Request *request, U8 *key) {
+    Header *header = HeaderNew(key);
+    I64 idx = PtrVecFindHeader(request->headers, header);
+    if (idx == -1)
+        return NULL;
+    Free(header);
+    return PtrVecGet(request->headers, idx);
+}
+
+// Searches for header with key in a Response.
+// Returns a pointer to that header.
+// Returns NULL if not found
+public Header *ResponseGetHeader(Response *response, U8 *key) {
+    Header *header = HeaderNew(key);
+    I64 idx = PtrVecFindHeader(response->headers, header);
+    Free(header);
+
+    if (idx == -1)
+        return NULL;
+
+    return PtrVecGet(response->headers, idx);
+}
 
 // Sets the User-Agent for the request.
 // If User-Agent is already set, it replaces it.
 // Returns 1 on success, 0 on failure.
 public Bool RequestSetUserAgent(Request *request, U8 *userAgent) {
-    RequestRemoveHeader(request, "User-Agent");
-    return RequestAddHeader(request, "User-Agent", userAgent);
+    Header *header = HeaderNew("User-Agent");
+    RequestRemoveHeader(request, header, TRUE);
+    Free(header);
+    return RequestAddHeader(request, HeaderNew("User-Agent", userAgent));
 }
 
 // Sets the Authorization header for the request.
 // If it is already set, replaces it.
 // Returns 1 on success, 0 on failure.
 public Bool RequestSetAuthorization(Request *request, U8 *auth) {
-    RequestRemoveHeader(request, "Authorization");
-    return RequestAddHeader(request, "Authorization", auth);
+    Header *header = HeaderNew("Authorization");
+    RequestRemoveHeader(request, header, TRUE);
+    Free(header);
+    return RequestAddHeader(request, HeaderNew("Authorization", auth));
 }
 
 // Sets the Accept header for the request.
 // If it is already set, replaces it.
 // Returns 1 on success, 0 on failure.
 public Bool RequestSetAccept(Request *request, U8 *accept) {
-    RequestRemoveHeader(request, "Accept");
-    return RequestAddHeader(request, "Accept", accept);
+    Header *header = HeaderNew("Accept");
+    RequestRemoveHeader(request, header, TRUE);
+    Free(header);
+    return RequestAddHeader(request, HeaderNew("Accept", accept));
 }
 
 /* Adds an additional accepted format to the Accept header.
@@ -177,10 +261,16 @@ public Bool RequestSetAccept(Request *request, U8 *accept) {
    programming a "RequestRemoveAccept" anytime soon (cry).
  TODO: Program a RequestRemoveAccept();
 */
-// TODO: Code this shit
-public Bool RequestAddAccept(Request *request, U8 *accept)
-{
+public Bool RequestAddAccept(Request *request, U8 *accept) {
+    Header *header = RequestGetHeader(request, "Accept");
 
+    if (!header) {
+        header = HeaderNew("Accept", accept);
+        RequestAddHeader(request, header);
+        return 1;
+    }
+
+    header->value = StrPrint(NULL, "%s, %s", header->value, accept);
 }
 
 private U8 *RequestReadBuffer(Request *request) {
@@ -216,8 +306,10 @@ private Response *ResponseNew() {
 private U0 ParseResponseLine(Response *response, U8 *buffer) {
     response->raw = StrNew(buffer);
 
-    I64 responseLineIdx = FindChar(buffer, '\n');
-    U8 *responseLine = GetSubStr(buffer, 0, responseLineIdx-1);
+    U8 *string = StrNew(buffer);
+
+    I64 responseLineIdx = FindChar(string, '\n');
+    U8 *responseLine = GetSubStr(string, 0, responseLineIdx-1);
 
     // Remove the protocol HTTP/1.1 from the response line
     I64 protocolIdx = FindChar(responseLine, ' ');
@@ -232,69 +324,101 @@ private U0 ParseResponseLine(Response *response, U8 *buffer) {
     response->statusCode = AToI32(statusCode);
     response->reason = StrNew(responseLine);
 
+    Free(string);
     Free(responseLine);
     Free(statusCode);
 }
 
 private U0 ParseResponseHeaders(Response *response, U8 *buffer) {
-    List *lines = SplitStr(buffer, "\r\n");
-
-    // Remove the first line which is the response line
-    ListDeque(lines);
+    PtrVec *lines = SplitStr(buffer, "\n");
 
     Bool headersDone = FALSE;
     U8 *line;
 
-    while ((line = ListDeque(lines)(U8 *)) != NULL && !headersDone) {
+    "= * ^ * =\n";
+    // Ignore first line as it's the http response line
+    for (I64 i = 0; i < lines->size; i++) {
+        U8 *line = PtrVecGet(lines, i);
         if (StrLen(line) != 0) {
-            // TODO: Add the headers to the response
-            // I am really tired
+            "- Line #%d: %s\n", i, line;
         }
 
-        else headersDone = TRUE;
+        else
+            headersDone = TRUE;
     }
 
-    ListRelease(lines, NULL);
-    Free(lines);
-    Free(line);
+    // TODO: Handle memoery
+    //ListRelease(lines, NULL);
+    //Free(lines);
+    //Free(line);
 }
 
-private U0 ParseResponseBody(Response *response, U8 *buffer) {
+private U0 ParseResponseContent(Response *response, U8 *buffer) {
 
 }
 
-public U0 RequestSetBody(Request *request, Json *body) {
+/* Will set the body of the request.
+ * If a body was already set, replaces it and re-calculates Content-Length.
+ * If the Json is invalid, does nothing and returns 0.
+    - This means that if a body was already set and this function is called
+       with a new, invalid body, the previous body and Content-Length will remain.
+ * Otherwise returns 1;
+*/
+public Bool RequestSetBody(Request *request, Json *body) {
+    if (JsonIsNull(body) || !JsonOk(body))
+        return 0;
+
     U8 *bodyStr = JsonToString(body);
-    I64 len = StrLen(bodyStr);
+    U8 *len = StrPrint(NULL, "%d", StrLen(bodyStr));
 
-    RequestAddHeader(request, "Content-Type", "application/json");
-    RequestAddHeader(request, "Content-Length", StrPrint(NULL, "%d", len));
+    // This memory will have to be freed by the user.
+    // Easily done by using RequestRelease(request).
+    Header *contentType = HeaderNew("Content-Type", "application/json");
+    Header *contentLength = HeaderNew("Content-Length", StrNew(len));
+
+    /* If for whatever reason, the user of this library decides to
+     * create a Header* for Content-Length, set it manually, then
+     * calls this function, the memory will be freed, the pointer will
+     * be deemed invalid and the developer will die.
+    */
+
+    // Replace the previous Content-Length header if it exists
+    RequestRemoveHeader(request, contentLength, TRUE);
+    RequestAddHeader(request, contentType);
+    RequestAddHeader(request, contentLength);
+
     request->body = body;
 
     Free(bodyStr);
+    Free(len);
 }
 
 public Response *RequestExecute(Request *request) {
+    // User will have to ResponseRelease() this memory.
     Response *response = ResponseNew();
 
-    if (!JsonIsNull(request->body) && JsonOk(request->body)) {
-        U8 *body = JsonToString(request->body);
-        RequestAddLine(request, "");
-        RequestAddLine(request, StrNew(body));
-        Free(body);
-    }
+    // Send the request line first
+    write(request->sockfd, request->requestLine, StrLen(request->requestLine));
 
-    else
-        RequestAddLine(request, "");
-
+    // Send the headers right after
     for (I64 i = 0; i < request->headers->size; i++) {
-        U8 *line = PtrVecGet(request->headers, i);
+        Header *header = PtrVecGet(request->headers, i);
+        U8 *line = StrPrint(NULL, "%s: %s\r\n", header->key, header->value);
         write(request->sockfd, line, StrLen(line));
         Free(line);
+    } write(request->sockfd, "\r\n", 2);    // Empty line after headers
+
+    // Send the body if applicable
+    if (!JsonIsNull(request->body) && JsonOk(request->body)) {
+        U8 *body = JsonToString(request->body);
+        write(request->sockfd, body, StrLen(body));
+        Free(body);
     }
 
     U8 *buffer = RequestReadBuffer(request);
     ParseResponseLine(response, buffer);
+    
+    ParseResponseHeaders(response, buffer);
 
     Free(buffer);
 
