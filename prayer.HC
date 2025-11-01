@@ -28,29 +28,60 @@ public class Response {
 
 // This function will free the memory of a Header
 // and all of its internal structures
-public U0 HeaderRelease(Header *header) {
-    Free(header->key);
-    Free(header->value);
+public U0 HeaderRelease(Header *header, Bool nullify = TRUE) {
+    // FIX: This function couldn't physically be more broken
+    /*
+    if (header->key)
+        Free(header->key);
+
+    if (header->value)
+        Free(header->value);
+    */
+
     Free(header);
-    header = NULL;
+
+    if (nullify)
+        header = NULL;
 }
 
 // This funcion will free the memory of a Request
 // and all of its internal structures
 public U0 RequestRelease(Request *request) {
     Free(request->url);
+    Free(request->requestLine);
+
+    for (I64 i = 0; i < request->headers->size; i++)
+        HeaderRelease(PtrVecGet(request->headers, i), FALSE);
     PtrVecRelease(request->headers);
+
     JsonRelease(request->body);
     Free(request);
     request = NULL;
 }
+
+/*
+
+
+    U8 *raw;            // Set by RequestExecute()
+    I32 statusCode;     // Set by ParseStatusLine()
+    U8 *reason;         // Set by ParseStatusLine()
+    PtrVec *headers;    // Set by ParseResponseHeaders()
+    U8 *contentType;    // Set by ParseResponseContent()
+    I64 contentLength;  // Set by ParseResponseContent()
+    U8 *content;        // Set by ParseResponseContent()
+
+*/
 
 // This funcion will free the memory of a Response
 // and all of its internal structures
 public U0 ResponseRelease(Response *response) {
     Free(response->raw);
     Free(response->reason);
+
+    for (I64 i = 0; i < response->headers->size; i++)
+        HeaderRelease(PtrVecGet(response->headers, i), FALSE);
     PtrVecRelease(response->headers);
+
     Free(response->contentType);
     Free(response->content);
     Free(response);
@@ -368,12 +399,16 @@ private U0 ParseResponseContent(Response *response, U8 *buffer) {
     U8 *content = "";
 
     // Skip one line (content length)
-    for (I64 i = contentIdx+1; i < lines->size && totalRead != response->contentLength; i++) {
+    for (I64 i = contentIdx+1; (i < lines->size) && (totalRead != response->contentLength); i++) {
+        // FIX: Sometimes the line gets cancer
         U8 *line = PtrVecGet(lines, i);
+        I64 lineLen = StrLen(line);
 
         // Read byte by byte
-        for (I64 j = 0; j < StrLen(line) && totalRead++ != response->contentLength; j++)
+        for (I64 j = 0; (j < lineLen) && (totalRead != response->contentLength); j++) {
             content = StrPrint(NULL, "%s%c", content, line[j]);
+            totalRead++;
+        }
 
         Free(line);
     }
