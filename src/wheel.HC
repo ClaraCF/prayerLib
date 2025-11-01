@@ -94,24 +94,24 @@ public IntVec *OccurencesIndexes(U8 *src, U8 *substr) {
 public PtrVec *SplitStr(U8 *string, U8 *delimiter) {
     IntVec *occurences = OccurencesIndexes(string, delimiter);
     PtrVec *splitted = PtrVecNew();
-    I64 delimLen = StrLen(delimiter);
+    I64 offset = 0;
 
-    for (I64 i = 0; i < occurences->size; i++) {
-        U8 *line;
-        I64 index = IntVecGet(occurences, i);
+    for (I64 i = 0; i < occurences->size+1; i++) {
+        I64 length;
 
-        if (i+1 == occurences->size)
-            line = GetSubStr(string, index, StrLen(string)-index);
+        if (i < occurences->size)
+            length = IntVecGet(occurences, i) - offset;
+
         else
-            line = GetSubStr(string, index, IntVecGet(occurences, i+1)-delimLen);
+            length = StrLen(string) - offset;
 
-        PtrVecPush(splitted, line);
-        
-        //Free(line);
+        U8 *buff = GetSubStr(string, offset, length);
+        offset += ++length;
+
+        PtrVecPush(splitted, buff);
     }
 
     IntVecRelease(occurences);
-
     return splitted;
 }
 
