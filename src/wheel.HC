@@ -37,7 +37,7 @@ public I64 FindSubStr(U8 *src, U8 *substr) {
     I64 srcLen = StrLen(src);
     I64 substrLen = StrLen(substr);
 
-    for (I64 i = 0; i < srcLen-substrLen; i++) {
+    for (I64 i = 0; i <= srcLen-substrLen; i++) {
         U8 *search = GetSubStr(src, i, substrLen);
         if (!StrCmp(search, substr))
             return i;
@@ -77,7 +77,7 @@ public IntVec *OccurencesIndexes(U8 *src, U8 *substr) {
             location = location + prevLen;
             IntVecPush(occurences, location);
 
-            prevLen = location;
+            prevLen = location + substrLen;
             I64 offset = index + substrLen;
             I64 length = StrLen(buffer) - offset;
 
