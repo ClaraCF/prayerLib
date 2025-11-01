@@ -17,12 +17,13 @@ public class Request {
 };
 
 public class Response {
-    U8 *raw;
-    I32 statusCode;
-    U8 *reason;
-    PtrVec *headers;
-    U8 *contentType;
-    U8 *content;
+    U8 *raw;            // Set by RequestExecute()
+    I32 statusCode;     // Set by ParseStatusLine()
+    U8 *reason;         // Set by ParseStatusLine()
+    PtrVec *headers;    // Set by ParseResponseHeaders()
+    U8 *contentType;    // Set by ParseResponseContent()
+    I64 contentLength;  // Set by ParseResponseContent()
+    U8 *content;        // Set by ParseResponseContent()
 };
 
 // This function will free the memory of a Header
@@ -319,11 +320,8 @@ private U0 ParseResponseLine(Response *response, U8 *buffer) {
 private U0 ParseResponseHeaders(Response *response, U8 *buffer) {
     PtrVec *lines = SplitStr(buffer, "\r\n");
 
-    Bool headersDone = FALSE;
-    U8 *line;
-
     // Ignore first line as it's the http response line
-    for (I64 i = 1; i < lines->size && !headersDone; i++) {
+    for (I64 i = 1; i < lines->size; i++) {
         U8 *line = PtrVecGet(lines, i);
         if (StrLen(line) != 0) {
             PtrVec *split = SplitStr(line, ": ");
@@ -334,15 +332,62 @@ private U0 ParseResponseHeaders(Response *response, U8 *buffer) {
         }
 
         else
-            headersDone = TRUE;
+            break;
     }
 
     PtrVecRelease(lines);
 }
 
-// TODO: Implement ParseResponseContent
 private U0 ParseResponseContent(Response *response, U8 *buffer) {
+    PtrVec *lines = SplitStr(buffer, "\r\n");
 
+    I64 contentIdx = 0;
+
+    // Skip all the request header
+    for (I64 i = 0; i < lines->size; i++) {
+        U8 *line = PtrVecGet(lines, i);
+        if (StrLen(line) == 0) {
+            contentIdx = ++i;
+            Free(line);
+            break;
+        }
+
+        Free(line);
+    }
+
+    if (contentIdx < lines->size) {
+        U8 *line = PtrVecGet(lines, contentIdx);
+        response->contentLength = strtoll(line, NULL, 16);
+        Free(line);
+    }
+
+    else
+        response->contentLength = 0;
+
+    I64 totalRead = 0;
+    U8 *content = "";
+
+    // Skip one line (content length)
+    for (I64 i = contentIdx+1; i < lines->size && totalRead != response->contentLength; i++) {
+        U8 *line = PtrVecGet(lines, i);
+
+        // Read byte by byte
+        for (I64 j = 0; j < StrLen(line) && totalRead++ != response->contentLength; j++)
+            content = StrPrint(NULL, "%s%c", content, line[j]);
+
+        Free(line);
+    }
+
+    Header *contentType = ResponseGetHeader(response, "Content-Type");
+    if (contentType != NULL)
+        response->contentType = contentType->value;
+    else
+        // Default to text/plain
+        response->contentType = "text/plain";
+
+    response->content = content;
+
+    PtrVecRelease(lines);
 }
 
 /* Will set the body of the request.
@@ -404,9 +449,12 @@ public Response *RequestExecute(Request *request) {
     }
 
     U8 *buffer = RequestReadBuffer(request);
+
+    response->raw = StrNew(buffer);
+
     ParseResponseLine(response, buffer);
-    
     ParseResponseHeaders(response, buffer);
+    ParseResponseContent(response, buffer);
 
     Free(buffer);
 
