@@ -1,16 +1,6 @@
 #include "./src/wheel.HC"
 #include "./src/net.HC"
 
-U0 Debug1(){}
-U0 Debug2(){}
-U0 Debug3(){}
-U0 Debug4(){}
-U0 Debug5(){}
-U0 Debug6(){}
-U0 Debug7(){}
-U0 Debug8(){}
-U0 Debug9(){}
-
 #define BUFFER_SIZE 1024
 
 public class Header {
@@ -299,13 +289,10 @@ private Response *ResponseNew() {
     response->contentType = NULL;
     response->content = NULL;
 
-    // TODO: Handle freeing this memory
     return response;
 }
 
 private U0 ParseResponseLine(Response *response, U8 *buffer) {
-    response->raw = StrNew(buffer);
-
     U8 *string = StrNew(buffer);
 
     I64 responseLineIdx = FindChar(string, '\n');
@@ -330,29 +317,30 @@ private U0 ParseResponseLine(Response *response, U8 *buffer) {
 }
 
 private U0 ParseResponseHeaders(Response *response, U8 *buffer) {
-    PtrVec *lines = SplitStr(buffer, "\n");
+    PtrVec *lines = SplitStr(buffer, "\r\n");
 
     Bool headersDone = FALSE;
     U8 *line;
 
-    "= * ^ * =\n";
     // Ignore first line as it's the http response line
-    for (I64 i = 0; i < lines->size; i++) {
+    for (I64 i = 1; i < lines->size && !headersDone; i++) {
         U8 *line = PtrVecGet(lines, i);
         if (StrLen(line) != 0) {
-            "- Line #%d: %s\n", i, line;
+            PtrVec *split = SplitStr(line, ": ");
+            U8 *key = PtrVecGet(split, 0);
+            U8 *value = PtrVecGet(split, 1);
+            Header *header = HeaderNew(key, value);
+            PtrVecPush(response->headers, header);
         }
 
         else
             headersDone = TRUE;
     }
 
-    // TODO: Handle memoery
-    //ListRelease(lines, NULL);
-    //Free(lines);
-    //Free(line);
+    PtrVecRelease(lines);
 }
 
+// TODO: Implement ParseResponseContent
 private U0 ParseResponseContent(Response *response, U8 *buffer) {
 
 }
